@@ -1,0 +1,4 @@
+pip install pyinstaller
+pyinstaller --onefile createreports.py
+
+В папке distr будет .exe файл
