@@ -337,7 +337,7 @@ config = {
         }
     }
 }
-
+# пути для отчета
 pathRep0 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Report')
 pathRep1 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Report1')
 pathRep2 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Report2')
@@ -345,7 +345,7 @@ pathRep3 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Report3')
 pathRep5 = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Report5')
 
 print([pathRep0, pathRep1, pathRep2, pathRep3, pathRep5])
-
+# нахождение доступных путей
 if os.path.exists(pathRep1):
     pathRep = pathRep1 + "\\"
 elif os.path.exists(pathRep2):
@@ -364,11 +364,11 @@ config['path3'] = pathRep
 # keywords = data("{items:{keywords:}")
 print('Keywords: "' + '", "'.join(config['availablereportnames']) + '".')
 
-
+# получение частей имени таблицы
 def getTableFileParts(tableFileName):
     return tableFileName.split('.csv')[0].split('_')
 
-
+# парсинг всех названий рисунков с расширением .png и возврат в отсортированном виде
 def findImageFileNames():
     imageFileNames = []
     for imageFileName in os.listdir(config['path1']):
@@ -376,15 +376,19 @@ def findImageFileNames():
             imageFileNames.append(imageFileName)
     return natsort.natsorted(imageFileNames)
 
+print(findImageFileNames())
+
 imagename = findImageFileNames()
 # print(imagename[0])
-
+# получение названий таблиц по частям
 def getTableParts(tableFileName):
     return natsort.natsorted(tableFileName.split('.csv')[0].split('_'))
 
+# получение названий рисунков по частям
 def getImageParts(imageFileName):
     return imageFileName.split('.png')[0].split('_')
 
+# нахождение названий таблиц с расширением .csv
 def findTableFileNames():
     tableFileNames = []
     for tableFileName in os.listdir(config['path3']):
@@ -395,54 +399,65 @@ def findTableFileNames():
 # t=findTableFileNames()
 # print(t)
 
-
+# чтение таблицы
 def importTable(tableFileName):
     with open(config['path3'] + tableFileName, 'r', newline="\n", encoding='utf-8') as fileObject:
         reader = csv.reader(x.replace('\0', ',') for x in fileObject)
         return list(reader)
 
-
+# добавление таблицы в документ
 def addTable(tableData, document):
-    table = document.add_table(rows=len(tableData), cols=len(tableData[0]),style='Table Grid') # add style
+    table = document.add_table(rows=len(tableData), cols=len(tableData[0])) # add style
+    table.style = 'Table Grid'
     for rowIndex, row in enumerate(tableData):
         for columnIndex, col in enumerate(row):
             cell = table.cell(rowIndex, columnIndex)
             cell.text = col
+            cell.width = Inches(3.5)
             #print(cell)
 
-
+# центрирование
 def center(document):
     paragraph = document.paragraphs[-1]
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-
+# выравнивание по правому краю
 def right(document):
     paragraph = document.paragraphs[-1]
     paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
+# выравнивание по левому краю
+def left(document):
+    paragraph = document.paragraphs[-1]
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
+# создание изображения
 def create_images():
     for table_file_name in findTableFileNames():
         x = []
         y = []
+        # чтение таблицы
         with open(pathRep + table_file_name, 'r') as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             headers = next(csv_reader)
             if len(headers) != 2:
                 continue
             isHeadersOmitted = False
-            if headers[0].isdigit() and headers[1].isdigit():
-                isHeadersOmitted = True
+            # проверка наличия названия осей
+            if headers[0].isdigit() and headers[1].isdigit(): # если шапки - цифры, значит названия осей опущены
+                isHeadersOmitted = True # флаг опущения названий осей, т.е. шапки таблиц
                 x.append(float(headers[0]))
                 y.append(float(headers[1]))
-            #print(headers)
+            # заполнение массива значений x и y
             for row in csv_reader:
                 x.append(float(row[0]))
                 y.append(float(row[1]))
+            # если названия опущены, тогда название осей задается по умолчанию
             if isHeadersOmitted:
                 plt.plot(x, y, marker='o')
                 plt.xlabel('X')
                 plt.ylabel('Y')
+            # иначе, заполняется первой строчкой таблицы, шапка таблицы - это название осей
             else:
                 # print(x)
                 # print(y)
@@ -460,75 +475,88 @@ def create_images():
         plt.savefig(pathRep + table_file_name.replace('.csv', '.png'))
         plt.clf()
 
-
+# создание отчета
 def createReports():
-    create_images()
-    tableFileNamePart0 = ''
-    tableFileNamePart1 = ''
+    create_images() # генерирование графиков
+    tableFileNamePart0 = '' # значение первой части названия таблицы - "Report№", отвечает за вид отчета
+    tableFileNamePart1 = '' # значение второй части названия таблицы - "Cxy", отвечает за изменение главы внутри одного отчета
     imagePart2 = ''
     imagePart3 = ''
-    paragraphIndex = 0
-    imageIndex = 0
-    tableIndex = 0
+    paragraphIndex = 0 # номер параграфа внутри отчета
+    imageIndex = 0 # номер рисунка внутри главы
+    tableIndex = 0 # номер таблицы внутри главы
     isFirstImage = None
     document = None
+    # главный цикл - вход в перебор картинок из сгенерированных
     for imageFileName in findImageFileNames():
-        imageParts = getImageParts(imageFileName)
+        imageParts = getImageParts(imageFileName) # массив частей названия изображения
+        print(imageParts, imageParts[0])
         # print(imageFileName)
-        if imageParts[0] not in config['availablereportnames']:  # проверка на наличие имени
+        if imageParts[0] not in config['availablereportnames']:  # проверка на наличие части названия рисунка с доступным именем в словаре
             continue
-        if tableFileNamePart0 != imageParts[0]:
-            paragraphIndex = 0
-            tableIndex = 0
+        if tableFileNamePart0 != imageParts[0]: # если название таблицы не совпадает с названием изображения, отслеживается изменение названия отчета
+            paragraphIndex = 0 # определяем начальный индекс параграфа
+            tableIndex = 0 # определяем начальный индекс таблицы
+            print('Here', tableFileNamePart0)
             if document is not None:
-                document.save(config['path2'] + tableFileNamePart0 + '.docx')
-            tableFileNamePart0 = imageParts[0]
+                document.save(config['path2'] + tableFileNamePart0 + '.docx') # создание нового документа если выявили изменение в первой части названия рисунка
+            tableFileNamePart0 = imageParts[0] # установка нового названия отчета
             document = Document()
-            imageIndex = 0
-        if tableFileNamePart1 != imageParts[1]:
-            tableFileNamePart1 = imageParts[1]
+            imageIndex = 0 # обнуление индекса картинки для нового отчета
+        if tableFileNamePart1 != imageParts[1]: # условие изменения главы внутри одного отчета
+            tableFileNamePart1 = imageParts[1] # меняем номер главы
             #imagePart3 = imageParts[3]
             #print(tableFileNamePart1)
-            paragraphIndex += 1
-            paragraph = document.add_paragraph()
-            paragraph.add_run('Глава '+ str(paragraphIndex) + '.' + ' ' + config['keywords'][imageParts[0]]['chapter' + str(paragraphIndex)]['title']).bold = True #add part3
+            paragraphIndex += 1 # изменение индекса параграфа
+            paragraph = document.add_paragraph() # добавление нового параграфа
+            chapterNumber = int(re.findall('^\d+', imageParts[1])[0])  # извлекаем номер главы рисунка
+            paragraph.add_run('Глава '+ str(paragraphIndex) + '.' + ' ' + config['keywords'][imageParts[0]]['chapter' + str(chapterNumber)]['title']).bold = True #add part3 добавление названия главы, нумерация глав
             print(paragraphIndex)
-            center(document)
-            isFirstImage = True
-        imageFilePath = config['path1'] + str(imageFileName[:-3]) + 'png'
-        if os.path.isfile(imageFilePath):
+            center(document) # центрирование
+            isFirstImage = True # флаг для первой картинки отчета
+        imageFilePath = config['path1'] + str(imageFileName[:-3]) + 'png' # формирование названия рисунка для добавления в документ
+        if os.path.isfile(imageFilePath): # если такой файл существует
             imageIndex += 1
-            document.add_picture(imageFilePath, width=Inches(5.0), height=Inches(3.5))
+            document.add_picture(imageFilePath, width=Inches(5.0), height=Inches(3.5)) # добавление картинки
             center(document)
             # print(len(imageParts))
-            chapterNumber = int(re.findall('^\d+', imageParts[1])[0])
-            if paragraphIndex != 0 and imageParts[0] in config['availablereportnames']:
-                prefix = 'Рисунок ' + str(imageIndex) + '. '
-                description = config['keywords'][imageParts[0]]['chapter' + str(chapterNumber)]['description']
+            chapterNumber = int(re.findall('^\d+', imageParts[1])[0]) # извлекаем номер главы рисунка
+            print('chapterNumber', chapterNumber)
+            if paragraphIndex != 0 and imageParts[0] in config['availablereportnames']: # проверка наличия имение отчета в словаре
+                prefix = 'Рисунок ' + str(imageIndex) + '. ' # нумерация рисунка
+                description = config['keywords'][imageParts[0]]['chapter' + str(chapterNumber)]['description'] # подпись рисунка: описание
                 postfix = '.'
             parameters = None
-            if imageParts[0] == 'Report1':
-                if paragraphIndex in list([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13]):
+            if imageParts[0] == 'Report1': # заполнение первого отчета
+                # условие вхождения номера главы в заданный диапазон
+                if chapterNumber in list([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13]):
                     parameters = {'beta': imageParts[3], 'mach': imageParts[4]}
-                if paragraphIndex in list([14, 15, 16, 17, 18, 19, 21]):
+
+                if chapterNumber in list([14, 15, 16, 17, 18, 19, 21]):
                     parameters = {'alpha': imageParts[3], 'beta': imageParts[4]}
-                if paragraphIndex in list([11, 12, 20]):
+
+                if chapterNumber in list([11, 12, 20]):
                     parameters = {'beta': imageParts[3]}
-                if paragraphIndex in list([22, 23, 24, 25, 26]):
+
+                if chapterNumber in list([22, 23, 24, 25, 26]):
                     parameters = {'alpha': imageParts[3], 'mach': imageParts[4]}
+
                 if imageParts[1] == '27Cp':
                     print('true')
                     parameters = {'axis': imageParts[2], 'value': imageParts[3], 'alpha': imageParts[4],
                                   'beta': imageParts[5], 'mach': imageParts[6]}
-                # print(imageParts[1])
-                # print(paragraphIndex)
-                # print(imageParts[3])
-                # print(parameters)
-                document.add_paragraph(prefix + description.format(**parameters) + postfix)
+                print(imageParts[1]) # 13Cxi(Cya)
+                print(paragraphIndex) # выдает сквозную нумерацию 11
+                print(imageParts[3]) # 0.0
+                print('Hello!', prefix, description, postfix)
+                document.add_paragraph(prefix + description.format(**parameters) + postfix) # добавление названия графика для Report1
+                center(document)
+                document.add_paragraph()
                 center(document)
 
             if imageParts[0] == 'Report2':
-                document.add_paragraph(prefix + description)
+                document.add_paragraph(prefix + description) # добавление названия графика для Report2
+                document.add_paragraph()
                 center(document)
 
             if imageParts[0] == 'Report3':
@@ -544,7 +572,8 @@ def createReports():
                 if chapterNumber == 22:
                     parameters = {'n': imageParts[3], 'axis': imageParts[2], 'value': imageParts[4], 'alpha': imageParts[5],
                                   'beta': imageParts[6], 'mach': imageParts[7]}
-                document.add_paragraph(prefix + description.format(**parameters) + postfix)
+                document.add_paragraph(prefix + description.format(**parameters) + postfix) # добавление названия графика для Report3
+                document.add_paragraph()
                 print(description)
                 center(document)
 
@@ -552,52 +581,70 @@ def createReports():
                 print(imageParts[3])
                 print(prefix)
                 print(description)
-                document.add_paragraph(prefix + description.format(mach=imageParts[3]))
+                document.add_paragraph(prefix + description.format(mach=imageParts[3])) # добавление названия графика для Report5
+                document.add_paragraph()
                 center(document)
         else:
             document.add_paragraph("Данных для построения этого отчёта было недостаточно.")
             document.add_page_break()
             continue
 
+        # если это первое изображение
         if isFirstImage:
-            if (str(imageFileName[:-3]) + 'csv') in findTableFileNames():
-                tableData = importTable(str(imageFileName[:-3]) + 'csv')
+            if (str(imageFileName[:-3]) + 'csv') in findTableFileNames(): # проверка существования таблицы
+                tableData = importTable(str(imageFileName[:-3]) + 'csv') # чтение таблицы
                 tableIndex += 1
-            if paragraphIndex != 0 and imageParts[0] in config['availablereportnames']:
-                prefixtabl = 'Таблица ' + str(tableIndex) + '. '
-                description = config['keywords'][imageParts[0]]['chapter' + str(paragraphIndex)][
-                    'description']
-                postfix = '.'
-            if imageParts[0] == 'Report1':
-                if paragraphIndex in list([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13]):
-                    document.add_paragraph(
-                        prefixtabl + description.format(beta=imageParts[3], mach=imageParts[4]) + postfix)
-                if paragraphIndex in list([14, 15, 16, 17, 18, 19, 21]):
-                    document.add_paragraph(
-                        prefixtabl + description.format(alpha=imageParts[3], beta=imageParts[4]) + postfix)
-                if paragraphIndex in list([11, 12, 20]):
-                    document.add_paragraph(
-                        prefixtabl + description.format(beta=imageParts[3]) + postfix)
-                if paragraphIndex in list([22, 23, 24, 25, 26]):
-                    document.add_paragraph(
-                        prefixtabl + description.format(alpha=imageParts[3], mach=imageParts[4]) + postfix)
-                if imageParts[1] == '27Cp':
-                    if imageParts[2] == 'x':
+                print('Tabl' ,imageFileName, tableIndex, tableData) #  Это печатается 2 раза, как???
+                if chapterNumber != 0 and imageParts[0] in config['availablereportnames']: # если существует параграф
+                    # формирование названия таблицы
+                    prefixtabl = 'Таблица ' + str(tableIndex) + '. '
+                    description = config['keywords'][imageParts[0]]['chapter' + str(chapterNumber)][
+                        'description']
+                    postfix = '.'
+                    print('prefixtable', prefixtabl)
+                if imageParts[0] == 'Report1':
+                    if chapterNumber in list([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13]):
                         document.add_paragraph(
-                            prefixtabl + description.format(axis=imageParts[2], value=imageParts[3],
-                                                            alpha=imageParts[4],
-                                                            beta=imageParts[5], mach=imageParts[6]) + postfix)
-                    if imageParts[2] == 'y':
-                        document.add_paragraph(
-                            prefixtabl + description.format(axis=imageParts[2], value=imageParts[3],
-                                                            alpha=imageParts[4],
-                                                            beta=imageParts[5], mach=imageParts[6]) + postfix)
-                    if imageParts[2] == 'z':
-                        document.add_paragraph(
-                            prefixtabl + description.format(axis=imageParts[2], value=imageParts[3],
-                                                            alpha=imageParts[4],
-                                                            beta=imageParts[5], mach=imageParts[6]) + postfix)
+                            prefixtabl + description.format(beta=imageParts[3], mach=imageParts[4]) + postfix) # добавление названия таблицы
+                        print('Yes1')
 
+                    if chapterNumber in list([14, 15, 16, 17, 18, 19, 21]):
+                        document.add_paragraph(
+                            prefixtabl + description.format(alpha=imageParts[3], beta=imageParts[4]) + postfix)
+                        print('Yes2')
+
+                    if chapterNumber in list([11, 12, 20]):
+                        document.add_paragraph(
+                            prefixtabl + description.format(beta=imageParts[3]) + postfix)
+                        print('Yes3')
+
+                    if chapterNumber in list([22, 23, 24, 25, 26]):
+                        document.add_paragraph(
+                            prefixtabl + description.format(alpha=imageParts[3], mach=imageParts[4]) + postfix)
+                        print('Yes4')
+
+                    if imageParts[1] == '27Cp':
+                        # добавление названия таблицы
+                        if imageParts[2] == 'x':
+                            document.add_paragraph(
+                                prefixtabl + description.format(axis=imageParts[2], value=imageParts[3],
+                                                                alpha=imageParts[4],
+                                                                beta=imageParts[5], mach=imageParts[6]) + postfix)
+                        if imageParts[2] == 'y':
+                            document.add_paragraph(
+                                prefixtabl + description.format(axis=imageParts[2], value=imageParts[3],
+                                                                alpha=imageParts[4],
+                                                                beta=imageParts[5], mach=imageParts[6]) + postfix)
+                        if imageParts[2] == 'z':
+                            document.add_paragraph(
+                                prefixtabl + description.format(axis=imageParts[2], value=imageParts[3],
+                                                                alpha=imageParts[4],
+                                                                beta=imageParts[5], mach=imageParts[6]) + postfix)
+
+                    addTable(tableData, document)
+                    left(document)
+                    document.add_page_break()
+            # возможность отключения вывода таблицы
             if config['tableoutput'] == 'Yes':
                 if imageParts[0] == 'Report2':
                     document.add_paragraph(prefixtabl + description)
@@ -714,15 +761,16 @@ def createReports():
                     document.add_paragraph(prefixtabl + description.format(mach=imageParts[3]))
                     center(document)
 
-                right(document)
+                center(document)
                 addTable(tableData, document)
                 document.add_page_break()
 
-            else:
-                if imageParts[0] == 'Report1':
-                    right(document)
-                    addTable(tableData, document)
-                    document.add_page_break()
+            # else:
+            #     if imageParts[0] == 'Report1':
+            #         center(document)
+            #         addTable(tableData, document)
+            #         document.add_page_break()
+            #         print('tabledataa', tableData)
         isFirstImage = False
     if document:
         document.save(config['path2'] + tableFileNamePart0 + '.docx')
